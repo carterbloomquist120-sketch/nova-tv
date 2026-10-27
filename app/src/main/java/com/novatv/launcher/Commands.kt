@@ -14,7 +14,8 @@ object Commands {
         val rowChanged: Boolean,
         val weatherChanged: Boolean,
         val openPkg: String?,
-        val problems: List<String>
+        val problems: List<String>,
+        val photoUrl: String?
     )
 
     // Command words must be uppercase so normal sentences ("Show: The Bear") aren't mistaken for commands.
@@ -34,6 +35,7 @@ object Commands {
         var row = false
         var weather = false
         var open: String? = null
+        var photo: String? = null
 
         for (raw in reply.lines()) {
             val line = raw.trim().trimStart('-', '*', '•', '`', ' ').trimEnd('`', ' ')
@@ -98,6 +100,9 @@ object Commands {
                     look = true
                     weather = true
                 }
+                verb.startsWith("SET") && key in PHOTO_KEYS -> {
+                    photo = m.groupValues[3].trim()
+                }
                 verb.startsWith("SET") -> {
                     when (set(key, value, prefs, problems)) {
                         Change.LOOK -> look = true
@@ -111,10 +116,12 @@ object Commands {
             }
         }
 
-        return Outcome(kept.joinToString("\n").trim(), look, row, weather, open, problems)
+        return Outcome(kept.joinToString("\n").trim(), look, row, weather, open, problems, photo)
     }
 
     private enum class Change { NONE, LOOK, WEATHER }
+
+    private val PHOTO_KEYS = setOf("background_photo", "background_url", "photo", "wallpaper_photo")
 
     private fun set(key: String, value: String, prefs: Prefs, problems: MutableList<String>): Change {
         val v = value.trim()
@@ -127,6 +134,15 @@ object Commands {
                     return Change.NONE
                 }
                 prefs.accent = c
+                return Change.LOOK
+            }
+            "background", "wallpaper", "scene", "backdrop" -> {
+                val style = Backgrounds.normalize(v)
+                if (style == null) {
+                    problems.add("I don't have a \"$v\" background yet. Try mountains, aurora, sunset, ocean, city, space or plain.")
+                    return Change.NONE
+                }
+                prefs.background = style
                 return Change.LOOK
             }
             "assistant_name", "assistant" -> {
@@ -232,7 +248,7 @@ object Commands {
             else -> "normal"
         }
         fun shown(b: Boolean) = if (b) "shown" else "hidden"
-        return "Current home screen: accent (the glow color)=${colorName(prefs.accent)}; " +
+        return "Current home screen: background=${prefs.background}; accent (the glow color)=${colorName(prefs.accent)}; " +
             "assistant_name=${prefs.assistantName}; user_name=${prefs.userName.ifBlank { "(none)" }}; " +
             "greeting=${prefs.greeting.ifBlank { "time of day" }}; text_size=$size; clock=${prefs.clockMode}; " +
             "temperature=${if (prefs.fahrenheit) "F" else "C"}; " +
@@ -249,6 +265,9 @@ object Commands {
             "SET accent: cyan | periwinkle | amber | mint | a bright hex color like #FF7AB6 " +
             "(the accent is the glow color used across the whole screen; \"glow\", \"theme color\" and " +
             "\"accent\" all mean this, and you CAN change it)\n" +
+            "SET background: mountains | aurora | sunset | ocean | city | space | plain | photo\n" +
+            "SET background_photo: <a picture link the user gave you> (sets their own photo as the background; " +
+            "never make up a link, ask them to type or paste one)\n" +
             "SET assistant_name: <name>\n" +
             "SET user_name: <name>\n" +
             "SET greeting: <short greeting, or default>\n" +

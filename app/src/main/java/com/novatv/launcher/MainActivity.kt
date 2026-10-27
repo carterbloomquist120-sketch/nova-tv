@@ -556,6 +556,27 @@ class MainActivity : Activity() {
             }
         }
 
+        // "change the background to aurora" (or to a picture link) works instantly, too.
+        val bg = Regex(
+            "^(?:make|set|change|switch|use|turn)\\s+(?:the\\s+|my\\s+)?(?:background|wallpaper|backdrop)\\s+(?:to\\s+|into\\s+)?(.+)$",
+            RegexOption.IGNORE_CASE
+        ).find(prompt.trim())
+        if (bg != null) {
+            val value = bg.groupValues[1].trim().trimEnd('.', '!')
+            if (value.startsWith("http", ignoreCase = true)) {
+                showExchange(shown, "")
+                downloadPhoto(shown, "Setting that picture as your background.", value)
+                return
+            }
+            val style = Backgrounds.normalize(value)
+            if (style != null && style != "photo") {
+                prefs.background = style
+                val label = Backgrounds.LABELS[Backgrounds.STYLES.indexOf(style)]
+                rebuildKeepingChat(shown, "Done. Your background is $label now.")
+                return
+            }
+        }
+
         busy = true
         history.add(AiClient.Msg("user", prompt))
         trimHistory()
@@ -612,8 +633,31 @@ class MainActivity : Activity() {
             afterResponse()
         }
 
+        result.photoUrl?.let { downloadPhoto(question, answer, it) }
+
         val pkg = result.openPkg
         if (pkg != null) handler.postDelayed({ AppRepo.launch(this, pkg) }, 1500)
+    }
+
+    /** Fetches a picture link, then makes it the background. */
+    private fun downloadPhoto(question: String, answer: String, url: String) {
+        setState("Downloading")
+        responseView.text = "$answer\n\nDownloading your picture…"
+        val appContext = applicationContext
+        Thread {
+            val error = Backgrounds.download(appContext, url)
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (error == null) {
+                    prefs.backgroundUrl = url
+                    prefs.background = "photo"
+                    rebuildKeepingChat(question, answer)
+                } else {
+                    setState("Ready")
+                    responseView.text = "$answer\n\n$error"
+                }
+            }
+        }.start()
     }
 
     /** Redraws the screen with the new settings but keeps the conversation on screen. */

@@ -2,98 +2,13 @@ package com.novatv.launcher
 
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
-import android.graphics.Shader
 import android.view.View
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
-
-/** Night sky with layered mountain ridges, drawn to fill the screen. */
-class SkyView(context: Context) : View(context) {
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var sky: LinearGradient? = null
-    private val ridges = ArrayList<Path>()
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        super.onSizeChanged(w, h, oldw, oldh)
-        sky = LinearGradient(
-            0f, 0f, 0f, h.toFloat(),
-            intArrayOf(0xFF111D36.toInt(), 0xFF0B1427.toInt(), 0xFF070B14.toInt()),
-            floatArrayOf(0f, 0.45f, 1f),
-            Shader.TileMode.CLAMP
-        )
-        val sx = w / 1920f
-        val sy = h / 1080f
-        ridges.clear()
-        for (pts in listOf(FAR, MID, NEAR)) {
-            val p = Path()
-            p.moveTo(pts[0] * sx, pts[1] * sy)
-            var i = 2
-            while (i < pts.size) {
-                p.lineTo(pts[i] * sx, pts[i + 1] * sy)
-                i += 2
-            }
-            p.lineTo(1920f * sx, 1080f * sy)
-            p.lineTo(0f, 1080f * sy)
-            p.close()
-            ridges.add(p)
-        }
-    }
-
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val w = width.toFloat()
-        val h = height.toFloat()
-        if (w <= 0f || h <= 0f) return
-        val sx = w / 1920f
-        val sy = h / 1080f
-
-        paint.style = Paint.Style.FILL
-        paint.shader = sky
-        canvas.drawRect(0f, 0f, w, h, paint)
-        paint.shader = null
-
-        paint.color = 0xFFC9D6EE.toInt()
-        paint.alpha = 26
-        canvas.drawCircle(1160f * sx, 180f * sy, 40f * sx, paint)
-        var i = 0
-        while (i < STARS.size) {
-            paint.alpha = 100
-            canvas.drawCircle(STARS[i] * sx, STARS[i + 1] * sy, STARS[i + 2] * sx, paint)
-            i += 3
-        }
-
-        val colors = intArrayOf(0xFF13203A.toInt(), 0xFF0E182C.toInt(), 0xFF0A1120.toInt())
-        val alphas = intArrayOf(230, 255, 255)
-        for (r in ridges.indices) {
-            paint.color = colors[r]
-            paint.alpha = alphas[r]
-            canvas.drawPath(ridges[r], paint)
-        }
-    }
-
-    companion object {
-        private val FAR = floatArrayOf(
-            0f, 620f, 180f, 540f, 320f, 590f, 470f, 470f, 610f, 560f, 760f, 430f, 900f, 520f,
-            1040f, 400f, 1190f, 500f, 1330f, 440f, 1480f, 530f, 1640f, 450f, 1780f, 520f, 1920f, 470f
-        )
-        private val MID = floatArrayOf(
-            0f, 760f, 140f, 690f, 300f, 740f, 460f, 650f, 620f, 720f, 800f, 630f, 960f, 710f,
-            1120f, 640f, 1300f, 730f, 1460f, 660f, 1620f, 720f, 1780f, 650f, 1920f, 700f
-        )
-        private val NEAR = floatArrayOf(
-            0f, 880f, 220f, 820f, 420f, 860f, 640f, 800f, 880f, 870f, 1100f, 810f,
-            1340f, 880f, 1560f, 820f, 1760f, 860f, 1920f, 830f
-        )
-        private val STARS = floatArrayOf(
-            260f, 120f, 1.6f, 610f, 70f, 1.2f, 880f, 150f, 1.4f, 1390f, 90f, 1.2f, 1700f, 160f, 1.6f
-        )
-    }
-}
 
 /** The assistant's glowing ring-and-dot mark. */
 class OrbView(context: Context, color: Int) : View(context) {

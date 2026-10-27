@@ -10,6 +10,7 @@ A custom AI home screen for a Fire TV (built for the Toshiba 50LF621U21, Fire OS
 - **Clock, greeting and weather.** Weather comes from Open-Meteo, which is free and needs no key.
 - **Launcher settings.** Your name, assistant name, Claude API key, AI model, weather location, °F/°C and glow color.
 - **Back button** clears the conversation and brings the suggestion cards back.
+- **Backgrounds.** Mountains, Aurora, Sunset, Ocean, City, Space, Plain, or your own photo from a link. Pick one in Launcher settings, or tell Nova "change the background to aurora" or "change the background to https://…/photo.jpg".
 - **Edit the home screen by asking.** "Make the glow amber", "rename yourself Jarvis", "pin Peacock", "put Netflix first", "hide the quick actions", "quick actions on the left", "make the text bigger", "24-hour clock", "set the weather to Culver City", "change my greeting to What's up", "reset the look". The same options are in Launcher settings → Home screen layout, in case the AI is offline.
 
 ## Get the app onto the TV

@@ -109,6 +109,17 @@ class SettingsActivity : Activity() {
             Ui.text(this, "Or just ask ${prefs.assistantName}: \"hide the quick actions\", \"make the text bigger\".", 18, Ui.MUTED),
             Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(10))
         )
+        var background = prefs.background
+        choice(
+            form, "Background", Backgrounds.LABELS,
+            Backgrounds.STYLES.indexOf(background).coerceAtLeast(0), perRow = 4
+        ) { background = Backgrounds.STYLES[it] }
+        val photoLink = field(
+            form, "Photo link (for the Photo background)", prefs.backgroundUrl,
+            "A direct link to a .jpg or .png",
+            InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_URI
+        )
+
         val greeting = field(form, "Greeting", prefs.greeting, "Blank = good morning / afternoon / evening")
 
         var showActions = prefs.showQuickActions
@@ -156,6 +167,33 @@ class SettingsActivity : Activity() {
             prefs.showApps = showApps
             prefs.textScale = textScale
             prefs.clockMode = clockMode
+            prefs.background = background
+
+            val link = photoLink.text.toString().trim()
+            val needsDownload = background == "photo" && link.isNotEmpty() &&
+                (link != prefs.backgroundUrl || !Backgrounds.hasPhoto(this))
+            if (needsDownload) {
+                Toast.makeText(this, "Downloading your picture…", Toast.LENGTH_SHORT).show()
+                val appContext = applicationContext
+                Thread {
+                    val error = Backgrounds.download(appContext, link)
+                    runOnUiThread {
+                        if (isFinishing || isDestroyed) return@runOnUiThread
+                        if (error == null) {
+                            prefs.backgroundUrl = link
+                            prefs.bumpRevision()
+                            Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
+                            finish()
+                        } else {
+                            Toast.makeText(this, error, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }.start()
+                return@button
+            }
+            if (background == "photo" && !Backgrounds.hasPhoto(this)) {
+                Toast.makeText(this, "Add a photo link to use the Photo background", Toast.LENGTH_LONG).show()
+            }
             prefs.bumpRevision()
             Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
             finish()
@@ -226,16 +264,21 @@ class SettingsActivity : Activity() {
         title: String,
         options: List<String>,
         initial: Int,
+        perRow: Int = 99,
         onPick: (Int) -> Unit
     ) {
         parent.addView(Ui.label(this, title), Ui.lp(Ui.WRAP, Ui.WRAP).margins(top = s(32)))
-        val row = Ui.row(this)
         val pills = ArrayList<TextView>()
         var selected = initial
         val paint: () -> Unit = {
             pills.forEachIndexed { i, p -> p.background = if (i == selected) onStyle() else offStyle() }
         }
+        var row = Ui.row(this)
         options.forEachIndexed { i, label ->
+            if (i > 0 && i % perRow == 0) {
+                parent.addView(row, Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(12)))
+                row = Ui.row(this)
+            }
             val p = pill(label) {
                 selected = i
                 onPick(i)
@@ -243,11 +286,11 @@ class SettingsActivity : Activity() {
             }
             p.setPadding(s(30), 0, s(30), 0)
             pills.add(p)
-            row.addView(p, Ui.lp(Ui.WRAP, s(64)).margins(left = if (i == 0) 0 else s(12)))
+            row.addView(p, Ui.lp(Ui.WRAP, s(64)).margins(left = if (i % perRow == 0) 0 else s(12)))
         }
+        parent.addView(row, Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(12)))
         paint()
         repainters.add(paint)
-        parent.addView(row, Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(12)))
     }
 
     private fun paintSwatches() {

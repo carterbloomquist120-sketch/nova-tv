@@ -110,8 +110,23 @@ class Prefs(context: Context) {
             sp.edit().putString(K_GREETING, value.trim()).apply()
         }
 
+    /** One of Backgrounds.STYLES. */
+    var background: String
+        get() = sp.getString(K_BACKGROUND, "mountains") ?: "mountains"
+        set(value) {
+            sp.edit().putString(K_BACKGROUND, value).apply()
+        }
+
+    /** The link the photo background was downloaded from. */
+    var backgroundUrl: String
+        get() = sp.getString(K_BACKGROUND_URL, "") ?: ""
+        set(value) {
+            sp.edit().putString(K_BACKGROUND_URL, value.trim()).apply()
+        }
+
     fun resetLook() {
         sp.edit()
+            .remove(K_BACKGROUND)
             .remove(K_ACCENT)
             .remove(K_SHOW_ACTIONS)
             .remove(K_SHOW_CARDS)
@@ -166,5 +181,7 @@ class Prefs(context: Context) {
         private const val K_TEXT_SCALE = "text_scale"
         private const val K_CLOCK = "clock"
         private const val K_GREETING = "greeting"
+        private const val K_BACKGROUND = "background"
+        private const val K_BACKGROUND_URL = "background_url"
     }
 }
