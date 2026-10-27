@@ -52,12 +52,20 @@ object Ui {
     var scale = 1f
         private set
 
+    /** Extra multiplier for text only (Settings > Text size). */
+    var textScale = 1f
+        private set
+
     private val faces = HashMap<Int, Typeface>()
 
     fun init(context: Context) {
         val dm = context.resources.displayMetrics
         scale = max(dm.widthPixels, dm.heightPixels) / 1920f
+        textScale = Prefs(context).textScale.coerceIn(0.8f, 1.3f)
     }
+
+    /** Design px -> real px for text, including the text size setting. */
+    fun tf(v: Number): Float = v.toFloat() * scale * textScale
 
     /** Design px -> real px (int). */
     fun s(v: Number): Int {
@@ -96,7 +104,7 @@ object Ui {
         val tv = TextView(context)
         tv.text = value
         tv.setTextColor(color)
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, sf(size))
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tf(size))
         tv.typeface = font(context, weight)
         tv.includeFontPadding = false
         return tv
@@ -107,7 +115,7 @@ object Ui {
         val tv = TextView(context)
         tv.text = value.uppercase()
         tv.setTextColor(color)
-        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, sf(size))
+        tv.setTextSize(TypedValue.COMPLEX_UNIT_PX, tf(size))
         tv.typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
         tv.letterSpacing = 0.16f
         tv.includeFontPadding = false

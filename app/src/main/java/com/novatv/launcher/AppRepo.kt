@@ -82,6 +82,27 @@ object AppRepo {
         }
     }
 
+    /** Pins an app to the end of the home row. Returns false if the row is full. */
+    fun pin(prefs: Prefs, apps: List<AppEntry>, app: AppEntry): Boolean {
+        val current = favorites(prefs, apps).map { it.pkg }.toMutableList()
+        if (current.contains(app.pkg)) return true
+        if (current.size >= MAX_FAVORITES) return false
+        current.add(app.pkg)
+        prefs.favorites = current
+        return true
+    }
+
+    fun unpin(prefs: Prefs, apps: List<AppEntry>, app: AppEntry) {
+        val current = favorites(prefs, apps).map { it.pkg }.toMutableList()
+        current.remove(app.pkg)
+        prefs.favorites = current
+    }
+
+    /** Replaces the whole home row with these apps, in this order. */
+    fun setOrder(prefs: Prefs, ordered: List<AppEntry>) {
+        prefs.favorites = ordered.map { it.pkg }.distinct().take(MAX_FAVORITES)
+    }
+
     fun isFavorite(prefs: Prefs, apps: List<AppEntry>, app: AppEntry): Boolean =
         favorites(prefs, apps).any { it.pkg == app.pkg }
 

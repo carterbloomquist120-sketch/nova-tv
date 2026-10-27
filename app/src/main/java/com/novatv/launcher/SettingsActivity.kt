@@ -100,6 +100,42 @@ class SettingsActivity : Activity() {
         form.addView(colors, Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(14)))
         paintSwatches()
 
+        // Home screen layout (Nova can change all of these when you ask, too)
+        form.addView(
+            Ui.text(this, "Home screen layout", 30, Ui.TEXT, 600),
+            Ui.lp(Ui.WRAP, Ui.WRAP).margins(top = s(52))
+        )
+        form.addView(
+            Ui.text(this, "Or just ask ${prefs.assistantName}: \"hide the quick actions\", \"make the text bigger\".", 18, Ui.MUTED),
+            Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(10))
+        )
+        val greeting = field(form, "Greeting", prefs.greeting, "Blank = good morning / afternoon / evening")
+
+        var showActions = prefs.showQuickActions
+        var showCards = prefs.showSuggestions
+        var showWeather = prefs.showWeather
+        var showApps = prefs.showApps
+        var actionsLeft = prefs.actionsLeft
+        var textScale = prefs.textScale
+        var clockMode = prefs.clockMode
+        val onOff = listOf("Show", "Hide")
+        choice(form, "Quick actions", onOff, if (showActions) 0 else 1) { showActions = it == 0 }
+        choice(form, "Quick actions side", listOf("Right", "Left"), if (actionsLeft) 1 else 0) { actionsLeft = it == 1 }
+        choice(form, "Suggestion cards", onOff, if (showCards) 0 else 1) { showCards = it == 0 }
+        choice(form, "Weather", onOff, if (showWeather) 0 else 1) { showWeather = it == 0 }
+        choice(form, "Apps row", onOff, if (showApps) 0 else 1) { showApps = it == 0 }
+        val sizes = listOf(0.9f, 1f, 1.15f)
+        val sizeIndex = when {
+            textScale < 0.95f -> 0
+            textScale > 1.05f -> 2
+            else -> 1
+        }
+        choice(form, "Text size", listOf("Small", "Normal", "Large"), sizeIndex) { textScale = sizes[it] }
+        val clocks = listOf("auto", "12h", "24h")
+        choice(form, "Clock", listOf("Auto", "12-hour", "24-hour"), clocks.indexOf(clockMode).coerceAtLeast(0)) {
+            clockMode = clocks[it]
+        }
+
         // Save / cancel
         val buttons = Ui.row(this)
         val save = button("Save", primary = true) {
@@ -112,6 +148,14 @@ class SettingsActivity : Activity() {
             lon.text.toString().toFloatOrNull()?.let { prefs.longitude = it }
             prefs.fahrenheit = fahrenheit
             prefs.accent = accent
+            prefs.greeting = greeting.text.toString()
+            prefs.showQuickActions = showActions
+            prefs.actionsLeft = actionsLeft
+            prefs.showSuggestions = showCards
+            prefs.showWeather = showWeather
+            prefs.showApps = showApps
+            prefs.textScale = textScale
+            prefs.clockMode = clockMode
             prefs.bumpRevision()
             Toast.makeText(this, "Saved", Toast.LENGTH_SHORT).show()
             finish()
@@ -145,7 +189,7 @@ class SettingsActivity : Activity() {
         e.setSingleLine(true)
         e.setTextColor(Ui.TEXT)
         e.setHintTextColor(Ui.FAINT)
-        e.setTextSize(TypedValue.COMPLEX_UNIT_PX, Ui.sf(24))
+        e.setTextSize(TypedValue.COMPLEX_UNIT_PX, Ui.tf(24))
         e.typeface = Ui.font(this, 400)
         e.setPadding(s(22), 0, s(22), 0)
         e.background = Ui.states(
@@ -163,11 +207,47 @@ class SettingsActivity : Activity() {
         return t
     }
 
+    private fun onStyle() =
+        Ui.states(Ui.box(Ui.alpha(accent, 0.20f), 16, 2, accent), Ui.box(Ui.alpha(accent, 0.30f), 16, 3, accent))
+
+    private fun offStyle() =
+        Ui.states(Ui.box(Ui.CHIP, 16, 1, Ui.CHIP_LINE), Ui.box(Ui.alpha(accent, 0.10f), 16, 2, accent))
+
     private fun paintUnits() {
-        val on = Ui.states(Ui.box(Ui.alpha(accent, 0.20f), 16, 2, accent), Ui.box(Ui.alpha(accent, 0.30f), 16, 3, accent))
-        val off = Ui.states(Ui.box(Ui.CHIP, 16, 1, Ui.CHIP_LINE), Ui.box(Ui.alpha(accent, 0.10f), 16, 2, accent))
-        fBtn.background = if (fahrenheit) on else off
-        cBtn.background = if (fahrenheit) off else on
+        fBtn.background = if (fahrenheit) onStyle() else offStyle()
+        cBtn.background = if (fahrenheit) offStyle() else onStyle()
+    }
+
+    private val repainters = ArrayList<() -> Unit>()
+
+    /** A row of pill buttons where one option is selected. */
+    private fun choice(
+        parent: LinearLayout,
+        title: String,
+        options: List<String>,
+        initial: Int,
+        onPick: (Int) -> Unit
+    ) {
+        parent.addView(Ui.label(this, title), Ui.lp(Ui.WRAP, Ui.WRAP).margins(top = s(32)))
+        val row = Ui.row(this)
+        val pills = ArrayList<TextView>()
+        var selected = initial
+        val paint: () -> Unit = {
+            pills.forEachIndexed { i, p -> p.background = if (i == selected) onStyle() else offStyle() }
+        }
+        options.forEachIndexed { i, label ->
+            val p = pill(label) {
+                selected = i
+                onPick(i)
+                paint()
+            }
+            p.setPadding(s(30), 0, s(30), 0)
+            pills.add(p)
+            row.addView(p, Ui.lp(Ui.WRAP, s(64)).margins(left = if (i == 0) 0 else s(12)))
+        }
+        paint()
+        repainters.add(paint)
+        parent.addView(row, Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(12)))
     }
 
     private fun paintSwatches() {
@@ -177,6 +257,7 @@ class SettingsActivity : Activity() {
             sw.background = Ui.states(normal, Ui.oval(c, 4, Ui.TEXT))
         }
         paintUnits()
+        repainters.forEach { it() }
     }
 
     private fun button(textValue: String, primary: Boolean, onClick: () -> Unit): TextView {

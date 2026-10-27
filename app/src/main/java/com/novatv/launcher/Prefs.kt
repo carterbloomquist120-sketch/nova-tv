@@ -56,6 +56,74 @@ class Prefs(context: Context) {
             sp.edit().putInt(K_ACCENT, value).apply()
         }
 
+    // ---- Layout (Nova can change these when you ask, or use Settings)
+
+    var showQuickActions: Boolean
+        get() = sp.getBoolean(K_SHOW_ACTIONS, true)
+        set(value) {
+            sp.edit().putBoolean(K_SHOW_ACTIONS, value).apply()
+        }
+
+    var showSuggestions: Boolean
+        get() = sp.getBoolean(K_SHOW_CARDS, true)
+        set(value) {
+            sp.edit().putBoolean(K_SHOW_CARDS, value).apply()
+        }
+
+    var showWeather: Boolean
+        get() = sp.getBoolean(K_SHOW_WEATHER, true)
+        set(value) {
+            sp.edit().putBoolean(K_SHOW_WEATHER, value).apply()
+        }
+
+    var showApps: Boolean
+        get() = sp.getBoolean(K_SHOW_APPS, true)
+        set(value) {
+            sp.edit().putBoolean(K_SHOW_APPS, value).apply()
+        }
+
+    /** True puts quick actions on the left of the assistant. */
+    var actionsLeft: Boolean
+        get() = sp.getBoolean(K_ACTIONS_LEFT, false)
+        set(value) {
+            sp.edit().putBoolean(K_ACTIONS_LEFT, value).apply()
+        }
+
+    /** 0.9 small, 1.0 normal, 1.15 large. */
+    var textScale: Float
+        get() = sp.getFloat(K_TEXT_SCALE, 1f)
+        set(value) {
+            sp.edit().putFloat(K_TEXT_SCALE, value).apply()
+        }
+
+    /** "auto", "12h" or "24h". */
+    var clockMode: String
+        get() = sp.getString(K_CLOCK, "auto") ?: "auto"
+        set(value) {
+            sp.edit().putString(K_CLOCK, value).apply()
+        }
+
+    /** Replaces "Good evening" when set. */
+    var greeting: String
+        get() = sp.getString(K_GREETING, "") ?: ""
+        set(value) {
+            sp.edit().putString(K_GREETING, value.trim()).apply()
+        }
+
+    fun resetLook() {
+        sp.edit()
+            .remove(K_ACCENT)
+            .remove(K_SHOW_ACTIONS)
+            .remove(K_SHOW_CARDS)
+            .remove(K_SHOW_WEATHER)
+            .remove(K_SHOW_APPS)
+            .remove(K_ACTIONS_LEFT)
+            .remove(K_TEXT_SCALE)
+            .remove(K_CLOCK)
+            .remove(K_GREETING)
+            .apply()
+    }
+
     /** Package names pinned to the home row, in order. Null until the user edits it. */
     var favorites: List<String>?
         get() {
@@ -90,5 +158,13 @@ class Prefs(context: Context) {
         private const val K_ACCENT = "accent"
         private const val K_FAVORITES = "favorites"
         private const val K_REVISION = "revision"
+        private const val K_SHOW_ACTIONS = "show_actions"
+        private const val K_SHOW_CARDS = "show_cards"
+        private const val K_SHOW_WEATHER = "show_weather"
+        private const val K_SHOW_APPS = "show_apps"
+        private const val K_ACTIONS_LEFT = "actions_left"
+        private const val K_TEXT_SCALE = "text_scale"
+        private const val K_CLOCK = "clock"
+        private const val K_GREETING = "greeting"
     }
 }

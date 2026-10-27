@@ -19,6 +19,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import com.novatv.launcher.Ui.margins
 import com.novatv.launcher.Ui.s
 import java.text.SimpleDateFormat
@@ -51,6 +52,7 @@ class MainActivity : Activity() {
     private lateinit var cardsRow: LinearLayout
     private lateinit var askBar: LinearLayout
     private lateinit var askInput: EditText
+    private lateinit var appsSection: View
     private lateinit var appsRow: LinearLayout
     private var firstCard: View? = null
 
@@ -64,7 +66,6 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = Prefs(this)
-        Ui.init(this)
         window.decorView.setBackgroundColor(Ui.BG)
         build()
     }
@@ -100,6 +101,7 @@ class MainActivity : Activity() {
     // ---------------------------------------------------------------- layout
 
     private fun build() {
+        Ui.init(this)
         builtRevision = prefs.revision
         accent = prefs.accent
         history.clear()
@@ -117,14 +119,28 @@ class MainActivity : Activity() {
         val main = Ui.row(this)
         main.gravity = Gravity.TOP
         content.addView(main, Ui.lp(Ui.MATCH, 0, 1f).margins(top = s(36)))
-        main.addView(buildAssistant(), Ui.lp(0, Ui.MATCH, 1f))
-        main.addView(buildActions(), Ui.lp(s(460), Ui.MATCH).margins(left = s(32)))
+        val assistant = buildAssistant()
+        if (prefs.showQuickActions) {
+            val actions = buildActions()
+            if (prefs.actionsLeft) {
+                main.addView(actions, Ui.lp(s(460), Ui.MATCH))
+                main.addView(assistant, Ui.lp(0, Ui.MATCH, 1f).margins(left = s(32)))
+            } else {
+                main.addView(assistant, Ui.lp(0, Ui.MATCH, 1f))
+                main.addView(actions, Ui.lp(s(460), Ui.MATCH).margins(left = s(32)))
+            }
+        } else {
+            main.addView(assistant, Ui.lp(0, Ui.MATCH, 1f))
+        }
 
-        content.addView(buildAppsSection(), Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(36)))
+        appsSection = buildAppsSection()
+        appsSection.visibility = if (prefs.showApps) View.VISIBLE else View.GONE
+        content.addView(appsSection, Ui.lp(Ui.MATCH, Ui.WRAP).margins(top = s(36)))
 
         setContentView(root)
         refreshApps()
         lastWeather?.let { showWeather(it) }
+        updateClock()
         resetConversation()
     }
 
@@ -134,6 +150,7 @@ class MainActivity : Activity() {
 
         val names = Ui.col(this)
         greetingView = Ui.text(this, "", 40, Ui.TEXT, 600)
+        greetingView.maxLines = 1
         dateView = Ui.label(this, "", 17)
         names.addView(greetingView)
         names.addView(dateView, Ui.lp(Ui.WRAP, Ui.WRAP).margins(top = s(10)))
@@ -254,7 +271,7 @@ class MainActivity : Activity() {
         askInput.hint = "Ask ${prefs.assistantName} anything"
         askInput.setHintTextColor(Ui.MUTED)
         askInput.setTextColor(Ui.TEXT)
-        askInput.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Ui.sf(24))
+        askInput.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, Ui.tf(24))
         askInput.typeface = Ui.font(this, 400)
         askInput.background = null
         askInput.setSingleLine(true)
@@ -351,7 +368,7 @@ class MainActivity : Activity() {
             try {
                 startActivity(Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             } catch (e: Exception) {
-                android.widget.Toast.makeText(this, "Couldn't open TV settings", android.widget.Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Couldn't open TV settings", Toast.LENGTH_SHORT).show()
             }
         }
         actionRow(panel, Icon.SLIDERS, "Launcher settings") {
@@ -428,19 +445,30 @@ class MainActivity : Activity() {
     private fun updateClock() {
         val now = Date()
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        val part = when (hour) {
-            in 5..11 -> "Good morning"
-            in 12..16 -> "Good afternoon"
-            else -> "Good evening"
+        val part = prefs.greeting.ifBlank {
+            when (hour) {
+                in 5..11 -> "Good morning"
+                in 12..16 -> "Good afternoon"
+                else -> "Good evening"
+            }
         }
         val name = prefs.userName
         greetingView.text = if (name.isBlank()) part else "$part, $name"
         dateView.text = SimpleDateFormat("EEE · MMM d", Locale.US).format(now).uppercase()
-        val pattern = if (android.text.format.DateFormat.is24HourFormat(this)) "H:mm" else "h:mm a"
-        timeView.text = SimpleDateFormat(pattern, Locale.US).format(now)
+        val use24 = when (prefs.clockMode) {
+            "24h" -> true
+            "12h" -> false
+            else -> android.text.format.DateFormat.is24HourFormat(this)
+        }
+        timeView.text = SimpleDateFormat(if (use24) "H:mm" else "h:mm a", Locale.US).format(now)
     }
 
     private fun refreshWeather() {
+        if (!prefs.showWeather) {
+            weatherIcon.visibility = View.GONE
+            weatherText.visibility = View.GONE
+            return
+        }
         val lat = prefs.latitude
         val lon = prefs.longitude
         val f = prefs.fahrenheit
@@ -456,6 +484,7 @@ class MainActivity : Activity() {
     }
 
     private fun showWeather(w: Weather) {
+        if (!prefs.showWeather) return
         val desc = WeatherClient.describe(w.code)
         weatherText.text = if (desc.isEmpty()) "${w.temp}°" else "${w.temp}° $desc"
         weatherText.visibility = View.VISIBLE
@@ -474,12 +503,16 @@ class MainActivity : Activity() {
     private fun resetConversation() {
         history.clear()
         promptRow.visibility = View.GONE
-        cardsRow.visibility = View.VISIBLE
-        responseView.text = "Here are a few ways to go tonight. Pick one, or just tell me a mood."
+        cardsRow.visibility = if (prefs.showSuggestions) View.VISIBLE else View.GONE
+        responseView.text = if (prefs.showSuggestions) {
+            "Here are a few ways to go tonight. Pick one, or just tell me a mood."
+        } else {
+            "What are you in the mood for tonight?"
+        }
         responseScroll.isFocusable = false
         responseScroll.scrollTo(0, 0)
         setState("Ready")
-        firstCard?.requestFocus()
+        if (prefs.showSuggestions) firstCard?.requestFocus() else askInput.requestFocus()
     }
 
     private fun setState(label: String) {
@@ -527,7 +560,7 @@ class MainActivity : Activity() {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 busy = false
-                outcome.onSuccess { reply -> showReply(reply) }
+                outcome.onSuccess { reply -> showReply(shown, reply) }
                 outcome.onFailure { err ->
                     if (history.isNotEmpty() && history.last().role == "user") history.removeAt(history.size - 1)
                     setState("Offline")
@@ -538,23 +571,46 @@ class MainActivity : Activity() {
         }.start()
     }
 
-    private fun showReply(reply: String) {
+    private fun showReply(question: String, reply: String) {
         history.add(AiClient.Msg("assistant", reply))
-        val lines = reply.lines()
-        val openLine = lines.lastOrNull { it.trim().startsWith("OPEN:", ignoreCase = true) }
-        val shown = lines.filterNot { it.trim().startsWith("OPEN:", ignoreCase = true) }
-            .joinToString("\n").trim()
-        responseView.text = shown.ifEmpty { "On it." }
+        val result = Commands.apply(reply, prefs, apps)
+
+        val parts = ArrayList<String>()
+        if (result.text.isNotEmpty()) parts.add(result.text)
+        parts.addAll(result.problems)
+        val answer = parts.joinToString("\n\n").ifEmpty { "Done." }
+
+        if (result.lookChanged) {
+            rebuildKeepingChat(question, answer)
+            if (result.weatherChanged) {
+                lastWeather = null
+                lastWeatherAt = 0L
+                refreshWeather()
+            }
+        } else {
+            if (result.rowChanged) refreshApps()
+            if (result.weatherChanged) {
+                lastWeatherAt = 0L
+                refreshWeather()
+            }
+            responseView.text = answer
+            setState("Ready")
+            afterResponse()
+        }
+
+        val pkg = result.openPkg
+        if (pkg != null) handler.postDelayed({ AppRepo.launch(this, pkg) }, 1500)
+    }
+
+    /** Redraws the screen with the new settings but keeps the conversation on screen. */
+    private fun rebuildKeepingChat(question: String, answer: String) {
+        val saved = ArrayList(history)
+        build()
+        history.addAll(saved)
+        showExchange(question, answer)
         setState("Ready")
         afterResponse()
-
-        if (openLine != null) {
-            val name = openLine.substringAfter(":").trim()
-            val app = AppRepo.findByName(apps, name)
-            if (app != null) {
-                handler.postDelayed({ AppRepo.launch(this, app.pkg) }, 1500)
-            }
-        }
+        updateClock()
     }
 
     private fun showExchange(question: String, answer: String) {
@@ -589,9 +645,9 @@ class MainActivity : Activity() {
             "plain text, no markdown. For lists, use short lines that start with '• '. " +
             "When suggesting something to watch, name the title and the installed app that " +
             "likely has it; streaming catalogs change, so if you aren't sure, say to check. " +
-            "You can't see what the user has already watched. " +
-            "If the user asks to open, launch, or put on an app, or says yes to one you suggested, " +
-            "end your reply with one final line exactly like: OPEN: <app name from the installed list>."
+            "You can't see what the user has already watched.\n\n" +
+            Commands.instructions(user) + "\n\n" +
+            Commands.describeState(prefs, apps)
     }
 
     private fun showKeyboard() {
