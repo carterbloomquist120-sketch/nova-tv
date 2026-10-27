@@ -232,7 +232,7 @@ object Commands {
             else -> "normal"
         }
         fun shown(b: Boolean) = if (b) "shown" else "hidden"
-        return "Current home screen: accent=${colorName(prefs.accent)}; " +
+        return "Current home screen: accent (the glow color)=${colorName(prefs.accent)}; " +
             "assistant_name=${prefs.assistantName}; user_name=${prefs.userName.ifBlank { "(none)" }}; " +
             "greeting=${prefs.greeting.ifBlank { "time of day" }}; text_size=$size; clock=${prefs.clockMode}; " +
             "temperature=${if (prefs.fahrenheit) "F" else "C"}; " +
@@ -246,7 +246,9 @@ object Commands {
         "You can also change this home screen. When the user asks for a change, reply in one short " +
             "sentence saying what you changed, then put each command on its own line at the very end, " +
             "written exactly like these (command words in capitals):\n" +
-            "SET accent: cyan | periwinkle | amber | mint | a bright hex color like #FF7AB6\n" +
+            "SET accent: cyan | periwinkle | amber | mint | a bright hex color like #FF7AB6 " +
+            "(the accent is the glow color used across the whole screen; \"glow\", \"theme color\" and " +
+            "\"accent\" all mean this, and you CAN change it)\n" +
             "SET assistant_name: <name>\n" +
             "SET user_name: <name>\n" +
             "SET greeting: <short greeting, or default>\n" +
@@ -263,6 +265,8 @@ object Commands {
             "RESET: look (back to the original design)\n" +
             "OPEN: <installed app name>\n" +
             "Only use commands when the user asks for that change or to open an app. " +
+            "You can't see or control the room's physical lights; if asked to match them, ask what color " +
+            "they are, then set the accent to that color. " +
             "If they ask for something not on this list, like a new layout, a new feature or a different " +
             "background, say you can't do that from the TV yet and that $owner can ask Claude to add it to the app."
 }

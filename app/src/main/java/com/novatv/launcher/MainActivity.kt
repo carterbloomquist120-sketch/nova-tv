@@ -542,6 +542,20 @@ class MainActivity : Activity() {
             }
         }
 
+        // "make the glow purple" works instantly, without the AI.
+        val glow = Regex(
+            "^(?:make|set|change|turn)\\s+(?:the\\s+|my\\s+)?(?:glow|accent|theme|color|colour)(?:\\s+colou?r)?\\s+(?:to\\s+|into\\s+)?(.+)$",
+            RegexOption.IGNORE_CASE
+        ).find(prompt.trim())
+        if (glow != null) {
+            val c = Commands.parseColor(glow.groupValues[1].trim().trimEnd('.', '!'))
+            if (c != null) {
+                prefs.accent = c
+                rebuildKeepingChat(shown, "Done. The glow is ${Commands.colorName(c)} now.")
+                return
+            }
+        }
+
         busy = true
         history.add(AiClient.Msg("user", prompt))
         trimHistory()
